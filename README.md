@@ -38,7 +38,7 @@ Run Julia scripts using:
 > julia script.jl
 ```
 
-The output prints the rates, e.g.
+The output prints the rates, e.g. for Ruthenium Hexamine (default parameters in `script.jl`)
 
 ```
 ABA k_ox 2.6323040539732973e-5 k_red 2.6323040539732787e-5
