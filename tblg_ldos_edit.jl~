@@ -1,0 +1,147 @@
+using Pkg; Pkg.activate("/Users/mbabar/Desktop/PhD/Analysis/Gerischer/")
+
+loc = "/Users/mbabar/Desktop/PhD/Analysis/Gerischer/ElectrochemicalKinetics.jl/src/"
+
+#using ElectrochemicalKinetics
+using MAT
+using CSV
+using DelimitedFiles
+using Printf
+using Interpolations
+using Trapz
+
+# Compute QC interp
+include(loc*"dos.jl")
+export DOS
+using .DOS: DOSData, get_dos
+export DOSData, get_dos
+include(loc*"quantum_capacitance.jl")
+include(loc*"kinetic_models.jl")
+export MarcusHushChidseyDOS
+
+## Debug Integrand limits
+function integrand(
+    mhcd::MarcusHushChidseyDOS,
+    Eo,
+    V_dl,
+    ox::Bool;
+    kT::Real = 0.026,
+    V_q = 0.0,
+)
+    function marcus_term(E)
+        local exp_arg
+        if ox
+            exp_arg = -(( E .+ mhcd.λ) .^ 2) ./ (4 * mhcd.λ * kT)
+        else
+            exp_arg = -(( E .- mhcd.λ) .^ 2) ./ (4 * mhcd.λ * kT)
+        end
+        exp.(exp_arg)
+    end
+    fd(E) = ox ? 1 .- fermi_dirac(E; kT = kT) : fermi_dirac(E; kT = kT)
+    E -> mhcd.A .* ((mhcd.dos.interp_func.(E .- V_q)).^ 1) .* marcus_term(E .- (Eo .+ V_q .+ V_dl)) .* fd(E)
+end
+
+function compute_k_cq(
+    V_app,
+    model::MarcusHushChidseyDOS,
+    ox::Bool;
+    Eo = -0.07, # E_f,red (solvent) - E_f,vac (bilayer) 
+    C_dl = 10.0,
+    Vq_min = -0.5,
+    Vq_max = 0.5,
+    kT = 0.026,
+    E_min = model.dos.E_min,
+    E_max = model.dos.E_max,
+)
+    V_dl_interp = calculate_Vdl_interp(model.dos.interp_func, Vq_min, Vq_max, C_dl)
+    #Vappl_data, Vdl_data = calculate_Vdl_interp(model.dos.interp_func, Vq_min, Vq_max, C_dl)
+    #v_interp = LinearInterpolation(Vappl_data, Vdl_data)
+
+    V_dl = V_dl_interp(V_app)
+    #V_dl = v_interp(V_app)
+    
+    V_q = V_app - V_dl
+    if V_q < 0
+           E_max = E_max .+ V_q	   
+    elseif V_q > 0
+    	   E_min = E_min .+ V_q
+    end
+    k_rate = quadgk(integrand(model, Eo, V_dl, ox; kT = kT, V_q = V_q), E_min, E_max)[1]
+    return k_rate
+end
+
+# Modify string
+function chop_str(str::String)
+         while str[length(str)] == '0'
+               str = chop(str)
+         end
+         if str[length(str)] == '.'
+            str = chop(str)
+         end
+         return str
+end
+
+## Calculate rates
+kT = 0.026 #eV
+
+## Identify ldos index for AA/AB
+region = "AA"
+# AA ldos at (1,1) in data matrix
+# AB ldos at (12,12) in data matrix
+if region=="AA"
+   id_x = 1
+   id_y = 1
+elseif region=="AB"
+   id_x = 12
+   id_y	= 12
+end
+
+Vapp = 0.07 #V
+ef = 0 # Fermi level
+Vq_min=-0.6
+Vq_max=0.6
+C_dl=10.0
+
+# ABA
+file = matopen("aba_dos.mat")
+Elist = transpose(read(file, "E_list"));
+dos_tot = read(file, "dos");
+dos = [Elist dos_tot]
+mhcd = MarcusHushChidseyDOS(1.0, 0.82, dos, Ef=ef)
+k_ox = compute_k_cq(Vapp, mhcd, true; Eo=-0.07,  Vq_min=Vq_min, Vq_max=Vq_max)		
+k_red = compute_k_cq(Vapp, mhcd, false; Eo=-0.07,  Vq_min=Vq_min, Vq_max=Vq_max)
+print("ABA ","k_ox ",k_ox," k_red ",k_red,"\n")
+
+# ABC
+file = matopen("abc_dos.mat")
+Elist = transpose(read(file, "E_list"));
+dos_tot = read(file, "dos");
+dos = [Elist dos_tot]
+mhcd = MarcusHushChidseyDOS(1.0, 0.82, dos, Ef=ef)
+k_ox = compute_k_cq(Vapp, mhcd, true; Eo=-0.07,  Vq_min=Vq_min, Vq_max=Vq_max)
+k_red = compute_k_cq(Vapp, mhcd, false; Eo=-0.07,  Vq_min=Vq_min, Vq_max=Vq_max)
+print("ABC ","k_ox ",k_ox," k_red ",k_red,"\n")
+
+# Area
+#lim = 1*kT
+#ef_id = findmin(abs.(ldos[:,1] .- ef))[2] # index closest to fermi level
+#lim_id = findmin(abs.(ldos[:,1] .- ef .+ lim))[2] # index closest to integration limit
+#dos_ar = trapz(ldos[lim_id:ef_id,1], ldos[lim_id:ef_id,2]) # ldos area from ef-kT to ef
+
+
+
+# Write rate data as .mat
+#file = matopen("k_data.mat", "w")
+#write(file, "k_data", k_mat)
+#write(file, "rscx", rscx)
+#write(file, "rscy", rscy)
+#close(file)
+
+
+##
+#@time begin
+#     mhcd = MarcusHushChidseyDOS(20.0, 0.82, dos)
+#     k = compute_k(0.4, mhcd; calc_cq=true, Vq_min=-0.45, Vq_max=0.45)
+#end
+
+
