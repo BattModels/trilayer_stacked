@@ -1,47 +1,51 @@
-# MHCD-tTLG : Marcus-Hush-Chidsey DOS rates in Twisted Trilayer Graphene system
+# trilayer_stacked : Tight Binding Calculation of DOS and MHC-DOS kinetic rates in Stacked Trilayer Graphene 
 
-Implement MHC-DOS kinetics from the Julia-based [ElectrochemicalKinetics.jl](https://github.com/BattModels/ElectrochemicalKinetics.jl) package. Needs density of states of the solid as input. We employ the low-energy momentum space model to get DOS for the twisted trilayer graphene system. See code descriptions for instructions for data reproducibility. 
+Calculation density of states for ABA/ABC stacked trilayer graphene using a low-energy momentum space model (or Fourier transformed tight-binding model). The DOS files are used as input to the MHC-DOS model for charge transfer rates with redox couple (Ruthenium Hexamine). For rate model see the Julia-based [ElectrochemicalKinetics.jl](https://github.com/BattModels/ElectrochemicalKinetics.jl) package. 
+
+## Contact 
+
+Dr. Stephen Carr : stephen_carr1@brown.edu
+
+Mohammad Babar : mdbabar@umich.edu 
 
 ## Code descriptions
 
-1. `angles.py` takes in DOS data files and outputs `q_dict.mat` with twist angle data. Will be input for `script.jl`
+Main file descriptions are as follows, other files are either output or supporting function files. 
 
-2. `script.jl` outputs `.mat` file with kox (kox_list), kred (kred_list), $\theta_{12}$ (q12_list) and $\theta_{23}$ (q23_list) variables for specified parameters $A$ , $\lambda$ and $\eta$.
+1. `trilayer_stacking_band_calc.m` generates DOS files for ABA or ABC stacking using tight binding. named `ABC_dos.mat` or `ABA_dos.mat`. Description of input arguments can be found at the beginning of the file.
 
-where $\lambda$ = reorganization energy (eV), $\eta$ = applied overpotential (V) and $A$ = proportionality constant for MHC-DOS theory. The output file has a format: `k_data_{A}_λ_{}_η_{}.mat`. Run Julia files with this command:
+2. `script.jl` main Julia calculation script that outputs `.mat` file with oxidation (k_ox) and reduction rates (k_red) for specified parameters $A$ , $\lambda$ and $\eta$.
+
+where $\lambda$ = reorganization energy (eV), $\eta$ = applied overpotential (V) and $A$ = proportionality constant for MHC-DOS theory. Other input parameters:
+
+i. `C_dl` : EDL capacitance (F)
+
+ii. `V_dl` : EDL voltage (V)
+
+iii. `C_q` : Quantum capacitance (F)
+
+iv. `V_q` : Quantum capacitance voltage (V)
+
+v. `Vq_min / Vq_max` : Min/Max range of Quantum capacitance voltage for interpolation (Eq. 3 in paper)
+
+vi. `kT` : Thermal energy to temperature setting (0.26 eV at 300 K)
+
+vii. `ef` : Fermi energy of the electrode
+
+Run Julia scripts using:
 
 ```
 > julia script.jl
 ```
 
-3. `eta_run_script.jl` runs `script.jl` at a range of eta values. 
-
-The output mat file has a format: `k_data_{A}_λ_{}_η_{}.mat`.
-
-
-4. `/sweep/` folder contains the .mat DOS files of the tTLG system at a range of $\theta_{12}$ and $\theta_{23}$.
-
-5. `/Eo_var/` folder contains kinetic rates for a range of $\eta$ and $E_{o}$ (formal potential of redox couple wrt electrode).
-
-Formal potential of Ruthenium Hexamine, `E = -0.25 V` vs. Ag/AgCl electrode and reorg. energy `λ=0.82 eV` [Ref](https://www.nature.com/articles/s41557-021-00865-1).
-
-Formal potential of twisted graphene, `E = -0.18 V` vs. Ag/AgCl electrode [Ref](https://www.nature.com/articles/s41557-021-00865-1). 
-
-Hence `Eo = -0.25 - (-0.18) = -0.07 V` is used for Ruthenium Hexamine. The kinetic rate files for Figure 2b are stored in `/Eo_var/_0.07/` folder. 
-
-Data for Figure 4 in paper is in `/Eo_var/0.3/` at equilibrium `k_data_1.0_λ_0.82_η_0.0.mat`.
-
-6. `sweep_dos.m` uses output `.mat` file to generate colormaps of k $_{red/ox}$ for given $A$ , $\lambda$ and $\eta$.
-
-Specify surface vector `v` in lines 38-42 to either `kox_list` for oxidation rates, `kred_list` for reduction rates or `dos_max` for maximum DOS values (Figure 2a) as shown below.
+The output prints the rates, e.g.
 
 ```
-x = q12_list;
-y = q23_list;
-v = kox_list;
-v = kred_list;
-v = dos_max;
+ABA k_ox 2.6323040539732973e-5 k_red 2.6323040539732787e-5
+ABC k_ox 2.77951068679322e-5 k_red 2.7795106867932337e-5
 ```
+
+Here LHS and RHS rates are equal as `η = 0.0` (no driving force).
 
 
 
