@@ -1,4 +1,4 @@
-# trilayer_stacked : Tight Binding Calculation of DOS and MHC-DOS kinetic rates in Stacked Trilayer Graphene 
+# trilayer_stacked : Momentum-space Continuum Calculation of DOS and MHC-DOS Kinetic Rates in Stacked Trilayer Graphene 
 
 Calculation density of states for ABA/ABC stacked trilayer graphene using a low-energy momentum space model (or Fourier transformed tight-binding model). The DOS files are used as input to the MHC-DOS model for charge transfer rates with redox couple (Ruthenium Hexamine). For rate model see the Julia-based [ElectrochemicalKinetics.jl](https://github.com/BattModels/ElectrochemicalKinetics.jl) package. 
 
